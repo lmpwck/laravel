@@ -37,7 +37,7 @@ final class TestCommand extends Command
         }
 
         // 1. Token and URL: send one log record straight to lampwick.
-        $sender = new HttpSender($url, $token, userAgent: 'lampwick-laravel/'.LampwickServiceProvider::VERSION, caBundle: $config['agent']['ca_bundle'] ?? null);
+        $sender = new HttpSender($url, $token, userAgent: 'lampwick-laravel/'.LampwickServiceProvider::version(), caBundle: $config['agent']['ca_bundle'] ?? null);
         $sender->start((string) json_encode([[
             't' => 'log',
             'timestamp' => microtime(true),

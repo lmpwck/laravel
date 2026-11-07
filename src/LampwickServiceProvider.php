@@ -17,7 +17,15 @@ use Laravel\Nightwatch\NightwatchServiceProvider;
  */
 final class LampwickServiceProvider extends ServiceProvider
 {
-    public const VERSION = '0.1.0';
+    /** The installed package version (from Composer), e.g. "v1.0.0", for the User-Agent. */
+    public static function version(): string
+    {
+        try {
+            return \Composer\InstalledVersions::getPrettyVersion('lampwick/laravel') ?? 'dev';
+        } catch (\Throwable) {
+            return 'dev';
+        }
+    }
 
     private bool $registeredTooLate = false;
 

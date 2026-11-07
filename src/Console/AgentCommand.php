@@ -44,7 +44,7 @@ final class AgentCommand extends Command
             $token,
             connectTimeout: (float) ($agentConfig['connect_timeout'] ?? 5.0),
             timeout: (float) ($agentConfig['timeout'] ?? 30.0),
-            userAgent: 'lampwick-laravel/'.LampwickServiceProvider::VERSION.' PHP/'.PHP_VERSION,
+            userAgent: 'lampwick-laravel/'.LampwickServiceProvider::version().' PHP/'.PHP_VERSION,
             caBundle: $agentConfig['ca_bundle'] ?? null,
         );
         $agent = new Agent(

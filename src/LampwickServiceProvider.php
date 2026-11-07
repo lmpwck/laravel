@@ -5,6 +5,7 @@ namespace Lampwick\Laravel;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\ServiceProvider;
 use Lampwick\Laravel\Console\AgentCommand;
+use Lampwick\Laravel\Console\DeployCommand;
 use Lampwick\Laravel\Console\TestCommand;
 use Laravel\Nightwatch\NightwatchServiceProvider;
 
@@ -43,7 +44,7 @@ final class LampwickServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([__DIR__.'/../config/lampwick.php' => $this->app->configPath('lampwick.php')], 'lampwick-config');
 
-            $this->commands([AgentCommand::class, TestCommand::class]);
+            $this->commands([AgentCommand::class, DeployCommand::class, TestCommand::class]);
         }
 
         if ($this->registeredTooLate && $this->app->runningInConsole()) {

@@ -1,0 +1,4 @@
+# Used by `vendor/bin/testbench` (the agent subprocess in tests).
+providers:
+  - Lampwick\Laravel\LampwickServiceProvider
+  - Laravel\Nightwatch\NightwatchServiceProvider

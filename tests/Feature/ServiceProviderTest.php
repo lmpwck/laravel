@@ -2,7 +2,7 @@
 
 namespace Lampwick\Laravel\Tests\Feature;
 
-use Lampwick\Laravel\Agent\Agent;
+use Lampwick\Agent\Agent;
 use Lampwick\Laravel\LampwickServiceProvider;
 use Laravel\Nightwatch\Core;
 use Laravel\Nightwatch\NightwatchServiceProvider;

@@ -20,11 +20,7 @@ final class LampwickServiceProvider extends ServiceProvider
     /** The installed package version (from Composer), e.g. "v1.0.0", for the User-Agent. */
     public static function version(): string
     {
-        try {
-            return \Composer\InstalledVersions::getPrettyVersion('lampwick/laravel') ?? 'dev';
-        } catch (\Throwable) {
-            return 'dev';
-        }
+        return \Lampwick\Agent\Settings::version('lampwick/laravel');
     }
 
     private bool $registeredTooLate = false;

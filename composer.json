@@ -1,7 +1,12 @@
 {
     "name": "lampwick/laravel",
     "description": "Send monitoring data from your Laravel app to lampwick over HTTPS.",
-    "keywords": ["laravel", "monitoring", "lampwick", "apm"],
+    "keywords": [
+        "laravel",
+        "monitoring",
+        "lampwick",
+        "apm"
+    ],
     "homepage": "https://lampwick.dev",
     "license": "MIT",
     "type": "library",
@@ -11,7 +16,8 @@
         "ext-json": "*",
         "illuminate/console": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
-        "laravel/nightwatch": "^1.24"
+        "lampwick/php-agent": "^1.0",
+        "laravel/nightwatch": ">=1.24.0 <1.31.0"
     },
     "require-dev": {
         "orchestra/testbench": "^10.0|^11.0",
@@ -20,6 +26,17 @@
     "suggest": {
         "ext-pcntl": "Lets lampwick:agent flush its buffer on SIGTERM/SIGINT before exiting."
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../php-agent",
+            "options": {
+                "versions": {
+                    "lampwick/php-agent": "1.0.0"
+                }
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
             "Lampwick\\Laravel\\": "src/"

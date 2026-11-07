@@ -14,7 +14,8 @@ unreachable, the agent keeps the records in memory (bounded) and retries.
 
 The instrumentation itself comes from the MIT-licensed
 [`laravel/nightwatch`](https://github.com/laravel/nightwatch) package, which is installed as a
-dependency; you configure everything with the `LAMPWICK_*` variables below.
+dependency (pinned to the versions this package is tested with); you configure everything with
+the `LAMPWICK_*` variables below.
 
 Requirements: PHP 8.2+ with the `curl` extension, Laravel 12 or 13. The `pcntl` extension
 (present on almost every Linux PHP build) lets the agent flush its buffer when it is stopped.
@@ -164,9 +165,16 @@ composer install
 vendor/bin/phpunit
 ```
 
-The tests run the agent against a fake HTTP ingest (`tests/Fixtures/fake-ingest.php` under
-`php -S`), including a full path from the instrumentation through a real `lampwick:agent`
-process.
+In the lampwick monorepo, Composer takes the shared core (`lampwick/php-agent`, the agent,
+client and record contract) from `../php-agent`.
+
+The contract tests (`tests/Contract`) run a small Laravel app (`tests/Contract/App`: a route,
+a command, a queued job and a scheduled task) as real processes — `php -S`, `queue:work`,
+`schedule:run` — through a real `lampwick:agent` to a fake HTTP ingest, and check every record
+against the format lampwick reads. The supported `laravel/nightwatch` versions are pinned to the
+range these tests pass on (`composer.json`); CI runs them on the lowest and highest version of
+that range, and once a week on the newest Nightwatch release, so a release that changes the
+record format shows up in CI before the range is widened.
 
 ## License
 

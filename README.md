@@ -16,7 +16,7 @@ The instrumentation itself comes from the MIT-licensed
 [`laravel/nightwatch`](https://github.com/laravel/nightwatch) package, which is installed as a
 dependency; you configure everything with the `LAMPWICK_*` variables below.
 
-Requirements: PHP 8.2+ with the `curl` extension, Laravel 11, 12 or 13. The `pcntl` extension
+Requirements: PHP 8.2+ with the `curl` extension, Laravel 12 or 13. The `pcntl` extension
 (present on almost every Linux PHP build) lets the agent flush its buffer when it is stopped.
 
 ## Install

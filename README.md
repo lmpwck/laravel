@@ -139,6 +139,9 @@ The variable names of the underlying instrumentation keep working; `LAMPWICK_*` 
 - `503`, `429`, other `5xx` and network errors are retried, honouring `Retry-After`, otherwise
   with exponential backoff up to 60 seconds. A `413` splits the batch. Other `4xx` answers
   (for example `401` for a wrong token) drop the batch and are logged as errors.
+- When your team has used its monthly events, lampwick answers `429` until the next month or
+  an upgrade. The agent then keeps the newest records buffered (up to its buffer size, oldest
+  dropped first) and tries again every minute; the app itself is not affected.
 - Payloads whose token does not match `LAMPWICK_TOKEN` are refused, so two apps on one server
   can't mix up their data: give each app its own `LAMPWICK_AGENT_LISTEN` port.
 - It logs to stdout/stderr: warnings at most once a minute per kind, and a summary every five

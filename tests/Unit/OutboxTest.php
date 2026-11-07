@@ -71,6 +71,21 @@ final class OutboxTest extends TestCase
         $this->assertSame('[{"t":"1"},{"t":"2"}]', $outbox->take(103.0)->body());
     }
 
+    public function test_keeps_records_while_the_event_quota_is_used_up(): void
+    {
+        // lampwick answers 429 with `Retry-After: 3600` when the team's monthly events are used up:
+        // the batch stays buffered and is retried at most a minute later (an upgrade lifts the block).
+        $outbox = new Outbox(1024, 4096, 0.0, maxBackoff: 60.0);
+        $outbox->push('[{"t":"1"}]', 0.0);
+        $outbox->take(0.0);
+
+        $this->assertSame(Outcome::Retry, $outbox->settle(429, 3600.0, 100.0));
+        $this->assertEqualsWithDelta(160.0, $outbox->backoffUntil(), 0.0001);
+        $this->assertSame(0, $outbox->droppedPayloads);
+        $this->assertTrue($outbox->due(160.0));
+        $this->assertSame('[{"t":"1"}]', $outbox->take(160.0)->body());
+    }
+
     public function test_backs_off_exponentially_without_retry_after(): void
     {
         $outbox = new Outbox(1024, 4096, 0.0, maxBackoff: 60.0);

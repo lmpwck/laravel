@@ -108,7 +108,7 @@ lampwick puts a marker on its charts and ties new errors to the deploy ("first s
 "new since last deploy"). It sends the current git commit, the `origin` remote (to link the
 commit) and the app environment along; override them with `--commit`, `--repo` and
 `--environment`. It uses the same `LAMPWICK_TOKEN` and needs no agent. On GitHub Actions you can
-use the lampwick deploy action instead (`oosterhoff/lampwick/integrations/github-action@main`).
+use the lampwick deploy action instead (`oosterhoff/lampwick/integrations/github-action@deploy-action-v1`).
 
 ## Configuration
 

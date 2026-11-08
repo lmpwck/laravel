@@ -66,7 +66,10 @@ final class DeployCommandTest extends TestCase
         $this->assertSame('https://github.com/acme/shop', DeployCommand::repoUrl('git@github.com:acme/shop.git'));
         $this->assertSame('https://gitlab.com/acme/shop', DeployCommand::repoUrl('ssh://git@gitlab.com:22/acme/shop.git'));
         $this->assertSame('https://github.com/acme/shop', DeployCommand::repoUrl('https://x-access-token:abc@github.com/acme/shop.git'));
+        $this->assertSame('https://github.com/acme/shop', DeployCommand::repoUrl('https://user:pa@ss@github.com/acme/shop.git?token=x#frag'));
+        $this->assertSame('https://git.example.com:8443/acme/shop', DeployCommand::repoUrl('https://ci@git.example.com:8443/acme/shop/'));
         $this->assertNull(DeployCommand::repoUrl('/srv/repos/shop.git'));
+        $this->assertNull(DeployCommand::repoUrl('file:///srv/repos/shop.git'));
         $this->assertNull(DeployCommand::repoUrl(null));
     }
 }

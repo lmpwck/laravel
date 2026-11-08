@@ -89,13 +89,17 @@ final class DeployCommand extends Command
         } elseif (preg_match('#^ssh://[\w.-]+@([\w.-]+)(?::\d+)?/(.+)$#', $remote, $m)) {
             $remote = "https://{$m[1]}/{$m[2]}";
         }
-        if (! preg_match('#^https?://#i', $remote)) {
+        // Rebuilt from its parts, so credentials (https://user:token@host/...), the query and the
+        // fragment never leave the machine.
+        $parts = parse_url($remote);
+        $scheme = strtolower($parts['scheme'] ?? '');
+        if ($parts === false || ! in_array($scheme, ['http', 'https'], true) || ($parts['host'] ?? '') === '') {
             return null;
         }
-        // Drop credentials (https://user:token@host/...) and the .git suffix.
-        $remote = (string) preg_replace('#^(https?://)[^/@]+@#i', '$1', $remote);
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $path = rtrim($parts['path'] ?? '', '/');
 
-        return (string) preg_replace('#\.git$#', '', rtrim($remote, '/'));
+        return $scheme.'://'.$parts['host'].$port.(string) preg_replace('#\.git$#', '', $path);
     }
 
     private function git(string ...$args): ?string

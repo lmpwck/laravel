@@ -52,14 +52,17 @@ Before anything leaves your app, these values are replaced by `[redacted]`:
 - **Secrets in URLs**: user info (`https://user:secret@host` → `https://user:[redacted]@host`,
   a token as user name `https://ghp_…@github.com` → `https://[redacted]@github.com`), the
   segment after `/reset/`, `/verify/`, `/confirm/`, `/invite/`, `/token/`, `/unsubscribe/` and
-  similar, and the values of route parameters with sensitive names (`/reset/{token}`) in the
-  request URL and its label. Outgoing request URLs also lose webhook secrets (Telegram
+  similar, and the values of route parameters with sensitive names or named `hash` or `nonce`
+  (`/reset/{token}`, `/verify/{id}/{hash}`) in the request URL and its label. Outgoing request URLs also lose webhook secrets (Telegram
   `/bot<token>/`, Slack `/services/…`, Discord `/api/webhooks/<id>/<token>`) and any path
   segment that looks like a random token.
-- **URLs inside text**: every URL in a log message, an exception message and string values in
-  log context is redacted the same way.
+- **Secrets inside text**: in log messages, exception messages and string values in log
+  context, every URL is redacted the same way, as are `Bearer <token>` and `Basic <credentials>`
+  values, JWTs (`eyJ….….…`) and the value of `name=value` or `name: value` pairs with a
+  sensitive name (`DB_PASSWORD=…`).
 - **Command lines**: the values of sensitive options (`--password=…`, `--token …`,
-  `--password='a b'`, `-psecret`) and URLs in any argument. Other arguments are sent as given.
+  `--password='a b'`, `-psecret`) and of `NAME=value` arguments with a sensitive name, and URLs
+  in any argument. Other arguments are sent as given.
 - **Headers listed in `LAMPWICK_REDACT_HEADERS`**, on top of the names above.
 - **Payload fields listed in `LAMPWICK_REDACT_PAYLOAD_FIELDS`** (default
   `_token,password,password_confirmation,current_password,new_password,token,secret,api_key`).
@@ -167,8 +170,8 @@ The variable names of the underlying instrumentation keep working; `LAMPWICK_*` 
 ## How the agent behaves
 
 - It answers the app as soon as a payload is received, so the app is never slowed down by
-  lampwick or the network. If the agent is not running, the app keeps working; records from
-  that period are lost.
+  Lampwick or the network. If the agent is not running, stuck or not reading, the app waits at
+  most about 1 second (the instrumentation's connection timeout plus its timeout) and keeps working; records from that period are lost.
 - One HTTPS request is in flight at a time; records keep their order.
 - `503`, `429`, other `5xx` and network errors are retried, honouring `Retry-After`, otherwise
   with exponential backoff up to 60 seconds. A `413` splits the batch. Other `4xx` answers

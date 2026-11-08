@@ -44,6 +44,7 @@ final class LampwickServiceProvider extends ServiceProvider
         }
 
         self::redactRecords();
+        self::useAgentStream($this->app->make(Repository::class));
 
         if ($this->registeredTooLate && $this->app->runningInConsole()) {
             $this->app->make('log')->warning('lampwick: LampwickServiceProvider was registered after the instrumentation provider, so LAMPWICK_* settings may not apply. Register Lampwick\Laravel\LampwickServiceProvider before Laravel\Nightwatch\NightwatchServiceProvider.');
@@ -101,13 +102,44 @@ final class LampwickServiceProvider extends ServiceProvider
         }
     }
 
-    /** @return list<string> the instrumentation's redaction hooks this package relies on that are missing */
+    /**
+     * Replaces the instrumentation's blocking socket with Transport\AgentStream, so a stuck agent
+     * costs at most the connection timeout plus the timeout (1 s by default), never a hang.
+     */
+    public static function useAgentStream(Repository $config): void
+    {
+        try {
+            $core = app(\Laravel\Nightwatch\Core::class);
+        } catch (\Throwable) {
+            return;
+        }
+        if (! $core->ingest instanceof \Laravel\Nightwatch\Ingest) {
+            return; // a test fake or a custom ingest
+        }
+        $timeout = (float) $config->get('nightwatch.ingest.connection_timeout', 0.5) + (float) $config->get('nightwatch.ingest.timeout', 0.5);
+        $core->ingest->streamFactory = Transport\AgentStream::factory(
+            max(0.05, $timeout),
+            (int) $config->get('lampwick.agent.max_frame_bytes', 8 * 1024 * 1024),
+        );
+    }
+
+    /**
+     * @return list<string> what this package relies on in the instrumentation that is missing:
+     *                      the redaction hooks and the replaceable ingest stream
+     */
     public static function missingRedactionHooks(): array
     {
-        return array_values(array_filter(
+        $missing = array_values(array_filter(
             ['redactRequests', 'redactOutgoingRequests', 'redactCommands', 'redactExceptions'],
             static fn (string $hook) => ! method_exists(\Laravel\Nightwatch\Core::class, $hook),
         ));
+        foreach ([[\Laravel\Nightwatch\Core::class, 'ingest'], [\Laravel\Nightwatch\Ingest::class, 'streamFactory']] as [$class, $property]) {
+            if (! property_exists($class, $property) || ! (new \ReflectionProperty($class, $property))->isPublic()) {
+                $missing[] = (new \ReflectionClass($class))->getShortName().'::$'.$property;
+            }
+        }
+
+        return $missing;
     }
 
     /** `/reset/{token}` routes: the values of sensitive route parameters leave the URL. */
@@ -121,7 +153,7 @@ final class LampwickServiceProvider extends ServiceProvider
         $path = (string) parse_url($url, PHP_URL_PATH);
         $redacted = $path;
         foreach ($parameters as $name => $value) {
-            if (is_scalar($value) && (string) $value !== '' && Redactor::isSensitive((string) $name)) {
+            if (is_scalar($value) && (string) $value !== '' && Redactor::isSensitiveRouteParameter((string) $name)) {
                 $redacted = implode('/', array_map(static fn (string $segment) => rawurldecode($segment) === (string) $value ? Redactor::REDACTED : $segment, explode('/', $redacted)));
             }
         }
@@ -148,7 +180,7 @@ final class LampwickServiceProvider extends ServiceProvider
         if ($enabled && ($missing = self::missingRedactionHooks()) !== []) {
             // Never send without the redaction: switch the instrumentation off instead.
             $enabled = false;
-            error_log('lampwick: this laravel/nightwatch version has no '.implode(', ', $missing).' hook, so secrets could not be redacted; monitoring is off. Update laravel/nightwatch.');
+            error_log('lampwick: this laravel/nightwatch version lacks '.implode(', ', $missing).', so secrets could not be redacted or the app could block on the agent; monitoring is off. Update laravel/nightwatch.');
         }
         if (! $enabled || ($token === '' && ! $config->get('nightwatch.token'))) {
             // Without a token there is nobody to send to: don't instrument at all.

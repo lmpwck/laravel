@@ -50,6 +50,11 @@ final class ServiceProviderTest extends TestCase
         $this->assertSame(Agent::tokenHash('uk_provider_test'), $ingest->getProperty('tokenHash')->getValue($core->ingest));
     }
 
+    public function test_the_instrumentation_has_every_redaction_hook(): void
+    {
+        $this->assertSame([], LampwickServiceProvider::missingRedactionHooks());
+    }
+
     public function test_disables_the_instrumentation_without_a_token(): void
     {
         $this->lampwick = ['token' => null];

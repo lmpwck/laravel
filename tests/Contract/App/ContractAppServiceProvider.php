@@ -39,7 +39,7 @@ final class ContractAppServiceProvider extends ServiceProvider
             DB::select('select ? as id', [$id]);
             Cache::get('contract-key');
             Cache::put('contract-key', 'value', 60);
-            Http::fake(['example.com/*' => Http::response('pong', 200)]);
+            Http::fake(['example.com/*' => Http::response('pong', 200), 'hooks.slack.com/*' => Http::response('ok', 200)]);
             Http::get('https://example.com/ping?access_token=SECRET-outgoing');
             Mail::to('ada@example.com')->send(new ContractMail);
             Notification::route('mail', 'ada@example.com')->notify(new ContractNotification);
@@ -49,6 +49,15 @@ final class ContractAppServiceProvider extends ServiceProvider
 
             return response()->json(['ok' => true]);
         })->name('contract.show');
+
+        Route::get('/reset/{token}', function (string $token) {
+            Http::fake(['hooks.slack.com/*' => Http::response('ok', 200)]);
+            Http::post('https://hooks.slack.com/services/T0001/B0002/SECRET-slack', ['text' => 'hi']);
+            Log::info('calling https://api.example.com/v1?api_key=SECRET-logurl');
+            report(new \RuntimeException('callback to https://deploy:SECRET-exception@ci.example.com/hook failed'));
+
+            return response()->noContent();
+        })->name('contract.reset');
 
         Route::get('/contract-fail', function () {
             throw new \LogicException('unhandled in the contract app');

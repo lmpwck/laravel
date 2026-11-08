@@ -39,29 +39,45 @@ application logs, add the `lampwick` channel to your log stack: `LOG_STACK=singl
 
 Before anything leaves your app, these values are replaced by `[redacted]`:
 
-- **Sensitive names**, everywhere a name comes with a value (request headers, request payload
-  fields, URL query parameters, log context and extra, command options): any name containing
-  `password`, `passwd`, `passphrase`, `secret`, `token`, `apikey`, `accesskey`, `privatekey`,
-  `auth`, `credential`, `cookie`, `session`, `sessid`, `signature`, `csrf`, `xsrf`, `otp`,
-  `cvv`, `cvc`, `cardnumber`, `iban`, `ssn` or `bearer`, and the names `pin`, `sig`, `code`,
-  `key`, `pwd`, `pass` and `jwt` (case, `-` and `_` ignored). So `Authorization`, `Cookie`,
-  `X-Auth-Token`, `?api_key=`, `?code=` (OAuth), `['password' => ...]` and
-  `--password=...` are all redacted. Nested keys too (`user[api_token]`).
-- **URL passwords**: `https://user:secret@host` becomes `https://user:[redacted]@host`, in
-  request and outgoing request URLs and in URLs inside log context.
+- **Sensitive names**, wherever a name comes with a value: request headers, request payload
+  fields, URL query and fragment parameters (nested ones too, `user[api_token]`), log context
+  and extra, and command options. A name is sensitive when it contains `passw`, `passphrase`,
+  `secret`, `token`, `apikey`, `accesskey`, `privatekey`, `auth` (not `author`), `credential`,
+  `cookie`, `session`, `sessid`, `signature`, `csrf`, `xsrf`, `otp`, `cvv`, `cvc`,
+  `cardnumber`, `iban`, `ssn`, `bearer`, `jwt`, `assertion`, `oidc`, `dsn`, `databaseurl`,
+  `connectionstring` or a localized "password" (`wachtwoord`, `passwort`, `motdepasse`, ...);
+  when it ends in `key` (`stripe_key`, `app_key`; not `primary_key`, `cache_key`,
+  `idempotency_key`, `sort_key`); or when it is `pin`, `sig`, `code`, `key`, `pw`, `pwd`,
+  `pass`. Case, `-`, `_` and `.` are ignored.
+- **Secrets in URLs**: user info (`https://user:secret@host` → `https://user:[redacted]@host`,
+  a token as user name `https://ghp_…@github.com` → `https://[redacted]@github.com`), the
+  segment after `/reset/`, `/verify/`, `/confirm/`, `/invite/`, `/token/`, `/unsubscribe/` and
+  similar, and the values of route parameters with sensitive names (`/reset/{token}`) in the
+  request URL and its label. Outgoing request URLs also lose webhook secrets (Telegram
+  `/bot<token>/`, Slack `/services/…`, Discord `/api/webhooks/<id>/<token>`) and any path
+  segment that looks like a random token.
+- **URLs inside text**: every URL in a log message, an exception message and string values in
+  log context is redacted the same way.
+- **Command lines**: the values of sensitive options (`--password=…`, `--token …`,
+  `--password='a b'`, `-psecret`) and URLs in any argument. Other arguments are sent as given.
 - **Headers listed in `LAMPWICK_REDACT_HEADERS`**, on top of the names above.
 - **Payload fields listed in `LAMPWICK_REDACT_PAYLOAD_FIELDS`** (default
   `_token,password,password_confirmation,current_password,new_password,token,secret,api_key`).
+
+The redaction runs through hooks of `laravel/nightwatch`; with a version that lacks them, the
+package turns monitoring off instead of sending unredacted records.
 
 Never sent at all: environment variables and configuration values, request bodies (unless `LAMPWICK_CAPTURE_REQUEST_PAYLOAD=true`; then only for 500 responses, with the rules above),
 response bodies, query bindings (only the SQL with its placeholders), the values of function
 arguments in stack traces (only their types), mail bodies and recipient addresses (only their
 number), and the project token (it only goes from the agent to lampwick, over HTTPS).
 
-What is sent as written: exception messages, SQL text, cache keys, log messages and, unless you
-set `LAMPWICK_CAPTURE_EXCEPTION_SOURCE_CODE=false`, the source lines of your own files around an
-exception. Keep secrets out of those, as you would for any log. lampwick's ingest also drops
-`Authorization`, `Cookie` and other credential headers itself, as a second line of defence.
+What is sent as written: SQL text, cache keys, mail subjects, log and exception messages apart
+from the URLs in them, and the source lines of your own files around an exception
+(`LAMPWICK_CAPTURE_EXCEPTION_SOURCE_CODE=false` turns them off; files under `vendor/`, `var/`,
+`bootstrap/cache/`, `storage/` and `.env*` files are never read). Keep secrets out of those, as
+you would for any log. lampwick's ingest also drops `Authorization`, `Cookie` and other
+credential headers itself, as a second line of defence.
 
 ## Run the agent in production
 
@@ -102,10 +118,16 @@ within `LAMPWICK_AGENT_SHUTDOWN_TIMEOUT` seconds (10 by default). Keep `stopwait
 
 ### Docker and multiple servers
 
-Each server (or container) that runs PHP needs an agent it can reach. In containers, either run
-the agent in the same container, or run it as a sidecar and point the app at it with
-`LAMPWICK_AGENT_LISTEN` (for example `0.0.0.0:2407` for the agent and `agent:2407` for the app).
-Never expose the agent's port to the internet: it accepts data from anyone who can reach it.
+Each server (or container) that runs PHP needs its own agent. Run the agent in the same
+container as the app (for example as a second process under Supervisor), so it keeps listening
+on `127.0.0.1`.
+
+The agent's port takes data from anyone who can connect and nothing on it is secret (the token
+hash in a payload is 7 hex characters), so never publish it (`ports:` in Compose, `-p` in
+`docker run`), never bind it to a public interface, and don't share it between apps. If the
+agent must run in a separate container, put both on an internal network of their own (Compose
+`internal: true`), set `LAMPWICK_AGENT_LISTEN` to the agent's address there in both, and keep
+the port unpublished.
 
 ## Configuration
 
@@ -115,7 +137,7 @@ the config file: `php artisan vendor:publish --tag=lampwick-config`.
 | Variable | Default | |
 | --- | --- | --- |
 | `LAMPWICK_TOKEN` | — | Project token. Without it nothing is captured. |
-| `LAMPWICK_URL` | `https://lampwick.dev` | lampwick address. Must be `https://` (plain `http://` only for localhost). |
+| `LAMPWICK_URL` | `https://lampwick.dev` | lampwick address. Must be `https://` (plain `http://` only to this machine: `localhost`, `127.0.0.1`, `::1`). |
 | `LAMPWICK_ENABLED` | `true` | `false` turns the instrumentation off. |
 | `LAMPWICK_AGENT_LISTEN` | `127.0.0.1:2407` | Address the agent listens on and the app sends to. |
 | `LAMPWICK_AGENT_FLUSH_INTERVAL` | `1.0` | Seconds a record may wait before its batch is sent. |

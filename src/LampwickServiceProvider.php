@@ -63,9 +63,15 @@ final class LampwickServiceProvider extends ServiceProvider
         } catch (\Throwable) {
             return;
         }
+
         if (method_exists($core, 'redactRequests')) {
-            $core->redactRequests(static function ($record): void {
-                $record->url = Redactor::url($record->url);
+            $core->redactRequests(static function ($record) use ($core): void {
+                $record->url = Redactor::url(self::withoutSensitiveRouteParameters($record->url));
+                // "GET /reset/<token>": the label of the request and of everything inside it.
+                if (property_exists($core->executionState, 'executionPreview') && str_contains($preview = $core->executionState->executionPreview, ' ')) {
+                    [$method, $path] = explode(' ', $preview, 2);
+                    $core->executionState->executionPreview = mb_strcut($method.' '.Redactor::url(self::withoutSensitiveRouteParameters($path)), 0, 255);
+                }
                 foreach (array_keys($record->headers->all()) as $name) {
                     if (Redactor::isSensitive((string) $name)) {
                         $record->headers->set((string) $name, Redactor::REDACTED);
@@ -76,7 +82,7 @@ final class LampwickServiceProvider extends ServiceProvider
         }
         if (method_exists($core, 'redactOutgoingRequests')) {
             $core->redactOutgoingRequests(static function ($record): void {
-                $record->url = Redactor::url($record->url);
+                $record->url = Redactor::url($record->url, outgoing: true);
             });
         }
         if (method_exists($core, 'redactCommands')) {
@@ -84,6 +90,45 @@ final class LampwickServiceProvider extends ServiceProvider
                 $record->command = Redactor::commandLine($record->command);
             });
         }
+        if (method_exists($core, 'redactExceptions')) {
+            $core->redactExceptions(static function ($record) use ($core): void {
+                $record->message = Redactor::text($record->message);
+                // The execution's preview is the raw message; the instrumentation set it already.
+                if (property_exists($core->executionState, 'exceptionPreview')) {
+                    $core->executionState->exceptionPreview = Redactor::text($core->executionState->exceptionPreview);
+                }
+            });
+        }
+    }
+
+    /** @return list<string> the instrumentation's redaction hooks this package relies on that are missing */
+    public static function missingRedactionHooks(): array
+    {
+        return array_values(array_filter(
+            ['redactRequests', 'redactOutgoingRequests', 'redactCommands', 'redactExceptions'],
+            static fn (string $hook) => ! method_exists(\Laravel\Nightwatch\Core::class, $hook),
+        ));
+    }
+
+    /** `/reset/{token}` routes: the values of sensitive route parameters leave the URL. */
+    private static function withoutSensitiveRouteParameters(string $url): string
+    {
+        try {
+            $parameters = request()->route()?->parameters() ?? [];
+        } catch (\Throwable) {
+            return $url;
+        }
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        $redacted = $path;
+        foreach ($parameters as $name => $value) {
+            if (is_scalar($value) && (string) $value !== '' && Redactor::isSensitive((string) $name)) {
+                $redacted = implode('/', array_map(static fn (string $segment) => rawurldecode($segment) === (string) $value ? Redactor::REDACTED : $segment, explode('/', $redacted)));
+            }
+        }
+
+        $at = $path === '' || $redacted === $path ? false : strpos($url, $path);
+
+        return $at === false ? $url : substr_replace($url, $redacted, $at, strlen($path));
     }
 
     /**
@@ -100,6 +145,11 @@ final class LampwickServiceProvider extends ServiceProvider
         }
 
         $enabled = filter_var($lampwick['enabled'] ?? true, FILTER_VALIDATE_BOOL);
+        if ($enabled && ($missing = self::missingRedactionHooks()) !== []) {
+            // Never send without the redaction: switch the instrumentation off instead.
+            $enabled = false;
+            error_log('lampwick: this laravel/nightwatch version has no '.implode(', ', $missing).' hook, so secrets could not be redacted; monitoring is off. Update laravel/nightwatch.');
+        }
         if (! $enabled || ($token === '' && ! $config->get('nightwatch.token'))) {
             // Without a token there is nobody to send to: don't instrument at all.
             $config->set('nightwatch.enabled', false);

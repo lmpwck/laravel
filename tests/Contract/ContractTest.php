@@ -63,6 +63,7 @@ final class ContractTest extends TestCase
 
         try {
             self::get("http://127.0.0.1:{$port}/contract/7?api_key=SECRET-query&page=2", ['Authorization: Bearer SECRET-bearer', 'X-Custom-Token: SECRET-header', 'Cookie: session=SECRET-cookie']);
+            self::get("http://127.0.0.1:{$port}/reset/SECRET-route-token");
             self::get("http://127.0.0.1:{$port}/contract-fail");
             self::get("http://127.0.0.1:{$port}/does-not-exist");
             foreach ([['contract:command'], ['contract:command', '--fail', '--password=SECRET-option'], ['queue:work', '--once', '--stop-when-empty'], ['schedule:run']] as $command) {
@@ -128,7 +129,11 @@ final class ContractTest extends TestCase
         }
         $show = $this->one('request', fn ($r) => $r['route_name'] === 'contract.show');
         $this->assertStringEndsWith('/contract/7?api_key=[redacted]&page=2', $show['url']);
-        $this->assertStringEndsWith('/ping?access_token=[redacted]', $this->one('outgoing-request', fn ($r) => true)['url']);
+        $this->assertStringEndsWith('/ping?access_token=[redacted]', $this->one('outgoing-request', fn ($r) => $r['host'] === 'example.com')['url']);
+        $this->assertSame('https://hooks.slack.com/services/[redacted]/[redacted]/[redacted]', $this->one('outgoing-request', fn ($r) => $r['host'] === 'hooks.slack.com')['url']);
+        $this->assertStringEndsWith('/reset/[redacted]', $this->one('request', fn ($r) => $r['route_name'] === 'contract.reset')['url']);
+        $this->one('log', fn ($r) => $r['message'] === 'calling https://api.example.com/v1?api_key=[redacted]');
+        $this->one('exception', fn ($r) => $r['message'] === 'callback to https://deploy:[redacted]@ci.example.com/hook failed');
         $log = json_decode($this->one('log', fn ($r) => $r['message'] === 'contract log')['context'], true);
         $this->assertSame(['id' => '7', 'password' => '[redacted]', 'user' => ['api_token' => '[redacted]']], $log);
     }
@@ -202,8 +207,7 @@ final class ContractTest extends TestCase
     {
         $query = $this->one('query', fn ($r) => $r['sql'] === 'select ? as id');
         $this->assertSame('sqlite', $query['connection']);
-        $this->assertSame('example.com', $this->one('outgoing-request', fn ($r) => true)['host']);
-        $this->assertSame(200, $this->one('outgoing-request', fn ($r) => true)['status_code']);
+        $this->assertSame(200, $this->one('outgoing-request', fn ($r) => $r['host'] === 'example.com')['status_code']);
         $this->one('cache-event', fn ($r) => $r['type'] === 'miss' && $r['key'] === 'contract-key');
         $this->one('cache-event', fn ($r) => $r['type'] === 'write' && $r['ttl'] === 60);
         $mail = $this->one('mail', fn ($r) => true);

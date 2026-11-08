@@ -46,7 +46,7 @@ return [
         'buffer_bytes' => (int) env('LAMPWICK_AGENT_BUFFER_BYTES', 64 * 1024 * 1024),
 
         // Largest single payload accepted from the app.
-        'max_frame_bytes' => (int) env('LAMPWICK_AGENT_MAX_FRAME_BYTES', 16 * 1024 * 1024),
+        'max_frame_bytes' => (int) env('LAMPWICK_AGENT_MAX_FRAME_BYTES', 8 * 1024 * 1024),
 
         'max_connections' => (int) env('LAMPWICK_AGENT_MAX_CONNECTIONS', 256),
 

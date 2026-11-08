@@ -62,10 +62,10 @@ final class ContractTest extends TestCase
         self::waitForPort($port);
 
         try {
-            self::get("http://127.0.0.1:{$port}/contract/7");
+            self::get("http://127.0.0.1:{$port}/contract/7?api_key=SECRET-query&page=2", ['Authorization: Bearer SECRET-bearer', 'X-Custom-Token: SECRET-header', 'Cookie: session=SECRET-cookie']);
             self::get("http://127.0.0.1:{$port}/contract-fail");
             self::get("http://127.0.0.1:{$port}/does-not-exist");
-            foreach ([['contract:command'], ['contract:command', '--fail'], ['queue:work', '--once', '--stop-when-empty'], ['schedule:run']] as $command) {
+            foreach ([['contract:command'], ['contract:command', '--fail', '--password=SECRET-option'], ['queue:work', '--once', '--stop-when-empty'], ['schedule:run']] as $command) {
                 $process = new Process([...$testbench, ...$command], $root, $env);
                 $process->run();
             }
@@ -119,6 +119,18 @@ final class ContractTest extends TestCase
     public function test_records_link_to_their_execution(): void
     {
         $this->assertSame([], Contract::linkViolations(self::$records));
+    }
+
+    public function test_no_secret_is_sent(): void
+    {
+        foreach (self::$ingest->requests() as $request) {
+            $this->assertStringNotContainsString('SECRET', $request['body']);
+        }
+        $show = $this->one('request', fn ($r) => $r['route_name'] === 'contract.show');
+        $this->assertStringEndsWith('/contract/7?api_key=[redacted]&page=2', $show['url']);
+        $this->assertStringEndsWith('/ping?access_token=[redacted]', $this->one('outgoing-request', fn ($r) => true)['url']);
+        $log = json_decode($this->one('log', fn ($r) => $r['message'] === 'contract log')['context'], true);
+        $this->assertSame(['id' => '7', 'password' => '[redacted]', 'user' => ['api_token' => '[redacted]']], $log);
     }
 
     public function test_request_records(): void
@@ -177,7 +189,7 @@ final class ContractTest extends TestCase
         $ok = $this->one('command', fn ($r) => $r['command'] === 'contract:command');
         $this->assertSame('contract:command', $ok['name']);
         $this->assertSame(0, $ok['exit_code']);
-        $this->assertSame(1, $this->one('command', fn ($r) => $r['command'] === 'contract:command --fail')['exit_code']);
+        $this->assertSame(1, $this->one('command', fn ($r) => $r['command'] === 'contract:command --fail --password=[redacted]')['exit_code']);
 
         $task = $this->one('scheduled-task', fn ($r) => $r['name'] === 'contract-task');
         $this->assertSame('* * * * *', $task['cron']);
@@ -199,7 +211,7 @@ final class ContractTest extends TestCase
         $this->assertSame('mail', $this->one('notification', fn ($r) => true)['channel']);
         $log = $this->one('log', fn ($r) => $r['message'] === 'contract log');
         $this->assertSame('warning', $log['level']);
-        $this->assertSame(['id' => '7'], json_decode($log['context'], true));
+        $this->assertSame('7', json_decode($log['context'], true)['id']);
     }
 
     /** @return array<string, mixed> the only record of type `$t` that matches */
@@ -211,9 +223,10 @@ final class ContractTest extends TestCase
         return $found[0];
     }
 
-    private static function get(string $url): void
+    /** @param list<string> $headers */
+    private static function get(string $url, array $headers = []): void
     {
-        $context = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 30]]);
+        $context = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 30, 'header' => $headers]]);
         file_get_contents($url, false, $context);
     }
 

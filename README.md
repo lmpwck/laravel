@@ -24,33 +24,44 @@ Requirements: PHP 8.2+ with the `curl` extension, Laravel 12 or 13. The `pcntl` 
 
 ```bash
 composer require lampwick/laravel
-```
-
-Add your project token to `.env`. You find it on the project's **Settings** page in lampwick.
-
-```dotenv
-LAMPWICK_TOKEN=uk_...
-```
-
-To also send your application logs, add the `lampwick` channel to your log stack:
-
-```dotenv
-LOG_STACK=single,lampwick
-```
-
-Start the agent and check the setup:
-
-```bash
+echo "LAMPWICK_TOKEN=uk_..." >> .env
 php artisan lampwick:agent
 ```
 
-```bash
-php artisan lampwick:test
-```
+Use your project token from the project's **Settings** page in lampwick. Open your app; within a
+few seconds the request shows up in lampwick. In production, keep the agent running under a
+process manager (below).
 
-`lampwick:test` sends a test log record straight to lampwick (checking your token and network)
-and checks that the agent is running. Open your app in the browser; within a few seconds the
-request shows up in lampwick.
+`php artisan lampwick:test` checks the token, the network and the agent. To also send your
+application logs, add the `lampwick` channel to your log stack: `LOG_STACK=single,lampwick`.
+
+## What is never sent
+
+Before anything leaves your app, these values are replaced by `[redacted]`:
+
+- **Sensitive names**, everywhere a name comes with a value (request headers, request payload
+  fields, URL query parameters, log context and extra, command options): any name containing
+  `password`, `passwd`, `passphrase`, `secret`, `token`, `apikey`, `accesskey`, `privatekey`,
+  `auth`, `credential`, `cookie`, `session`, `sessid`, `signature`, `csrf`, `xsrf`, `otp`,
+  `cvv`, `cvc`, `cardnumber`, `iban`, `ssn` or `bearer`, and the names `pin`, `sig`, `code`,
+  `key`, `pwd`, `pass` and `jwt` (case, `-` and `_` ignored). So `Authorization`, `Cookie`,
+  `X-Auth-Token`, `?api_key=`, `?code=` (OAuth), `['password' => ...]` and
+  `--password=...` are all redacted. Nested keys too (`user[api_token]`).
+- **URL passwords**: `https://user:secret@host` becomes `https://user:[redacted]@host`, in
+  request and outgoing request URLs and in URLs inside log context.
+- **Headers listed in `LAMPWICK_REDACT_HEADERS`**, on top of the names above.
+- **Payload fields listed in `LAMPWICK_REDACT_PAYLOAD_FIELDS`** (default
+  `_token,password,password_confirmation,current_password,new_password,token,secret,api_key`).
+
+Never sent at all: environment variables and configuration values, request bodies (unless `LAMPWICK_CAPTURE_REQUEST_PAYLOAD=true`; then only for 500 responses, with the rules above),
+response bodies, query bindings (only the SQL with its placeholders), the values of function
+arguments in stack traces (only their types), mail bodies and recipient addresses (only their
+number), and the project token (it only goes from the agent to lampwick, over HTTPS).
+
+What is sent as written: exception messages, SQL text, cache keys, log messages and, unless you
+set `LAMPWICK_CAPTURE_EXCEPTION_SOURCE_CODE=false`, the source lines of your own files around an
+exception. Keep secrets out of those, as you would for any log. lampwick's ingest also drops
+`Authorization`, `Cookie` and other credential headers itself, as a second line of defence.
 
 ## Run the agent in production
 
@@ -126,8 +137,8 @@ the config file: `php artisan vendor:publish --tag=lampwick-config`.
 | `LAMPWICK_LOG_LEVEL` | `LOG_LEVEL` | Lowest log level sent through the `lampwick` channel. |
 | `LAMPWICK_CAPTURE_EXCEPTION_SOURCE_CODE` | `true` | Include source lines around exceptions. |
 | `LAMPWICK_CAPTURE_REQUEST_PAYLOAD` | `false` | Include request bodies (redacted fields below). |
-| `LAMPWICK_REDACT_PAYLOAD_FIELDS` | `_token,password,password_confirmation` | Comma-separated. |
-| `LAMPWICK_REDACT_HEADERS` | `Authorization,Cookie,Proxy-Authorization,X-XSRF-TOKEN` | Comma-separated. |
+| `LAMPWICK_REDACT_PAYLOAD_FIELDS` | `_token,password,password_confirmation,current_password,new_password,token,secret,api_key` | Comma-separated; on top of the rules in *What is never sent*. |
+| `LAMPWICK_REDACT_HEADERS` | `Authorization,Cookie,Proxy-Authorization,X-XSRF-TOKEN,X-CSRF-TOKEN,X-Api-Key,X-Auth-Token` | Comma-separated; on top of the rules in *What is never sent*. |
 
 The variable names of the underlying instrumentation keep working; `LAMPWICK_*` values win.
 

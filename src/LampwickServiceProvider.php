@@ -4,6 +4,7 @@ namespace Lampwick\Laravel;
 
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\ServiceProvider;
+use Lampwick\Agent\Redactor;
 use Lampwick\Laravel\Console\AgentCommand;
 use Lampwick\Laravel\Console\TestCommand;
 use Laravel\Nightwatch\NightwatchServiceProvider;
@@ -42,8 +43,46 @@ final class LampwickServiceProvider extends ServiceProvider
             $this->commands([AgentCommand::class, TestCommand::class]);
         }
 
+        self::redactRecords();
+
         if ($this->registeredTooLate && $this->app->runningInConsole()) {
             $this->app->make('log')->warning('lampwick: LampwickServiceProvider was registered after the instrumentation provider, so LAMPWICK_* settings may not apply. Register Lampwick\Laravel\LampwickServiceProvider before Laravel\Nightwatch\NightwatchServiceProvider.');
+        }
+    }
+
+    /**
+     * Applies lampwick's redaction rules (Lampwick\Agent\Redactor) on top of the
+     * instrumentation's header/payload redaction: sensitive query parameters and URL passwords
+     * in request and outgoing request URLs, sensitive headers and payload fields by name, and
+     * sensitive command options.
+     */
+    public static function redactRecords(): void
+    {
+        try {
+            $core = app(\Laravel\Nightwatch\Core::class);
+        } catch (\Throwable) {
+            return;
+        }
+        if (method_exists($core, 'redactRequests')) {
+            $core->redactRequests(static function ($record): void {
+                $record->url = Redactor::url($record->url);
+                foreach (array_keys($record->headers->all()) as $name) {
+                    if (Redactor::isSensitive((string) $name)) {
+                        $record->headers->set((string) $name, Redactor::REDACTED);
+                    }
+                }
+                $record->payload->replace(Redactor::array($record->payload->all()));
+            });
+        }
+        if (method_exists($core, 'redactOutgoingRequests')) {
+            $core->redactOutgoingRequests(static function ($record): void {
+                $record->url = Redactor::url($record->url);
+            });
+        }
+        if (method_exists($core, 'redactCommands')) {
+            $core->redactCommands(static function ($record): void {
+                $record->command = Redactor::commandLine($record->command);
+            });
         }
     }
 
@@ -101,6 +140,7 @@ final class LampwickServiceProvider extends ServiceProvider
             $config->set('logging.channels.lampwick', [
                 'driver' => 'custom',
                 'via' => \Laravel\Nightwatch\Factories\Logger::class,
+                'tap' => [Logging\RedactLogContext::class],
                 'level' => $config->get('nightwatch.filtering.log_level') ?? env('LOG_LEVEL', 'debug'),
             ]);
         }

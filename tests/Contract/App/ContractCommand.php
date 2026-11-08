@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 final class ContractCommand extends Command
 {
-    protected $signature = 'contract:command {--fail}';
+    protected $signature = 'contract:command {--fail} {--password=}';
 
     protected $description = 'Command of the contract app';
 

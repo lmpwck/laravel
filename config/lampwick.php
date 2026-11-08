@@ -95,8 +95,20 @@ return [
 
     'capture_request_payload' => env('LAMPWICK_CAPTURE_REQUEST_PAYLOAD'),
 
-    'redact_payload_fields' => $list(env('LAMPWICK_REDACT_PAYLOAD_FIELDS')),
+    /*
+    |--------------------------------------------------------------------------
+    | Redaction
+    |--------------------------------------------------------------------------
+    |
+    | Values of these headers and payload fields are never sent. On top of
+    | these lists, any header, payload field, query parameter, log context
+    | key or command option whose name contains password, secret, token,
+    | key, auth, cookie, session, ... is redacted (Lampwick\Agent\Redactor).
+    |
+    */
 
-    'redact_headers' => $list(env('LAMPWICK_REDACT_HEADERS')),
+    'redact_payload_fields' => $list(env('LAMPWICK_REDACT_PAYLOAD_FIELDS', '_token,password,password_confirmation,current_password,new_password,token,secret,api_key')),
+
+    'redact_headers' => $list(env('LAMPWICK_REDACT_HEADERS', 'Authorization,Cookie,Proxy-Authorization,X-XSRF-TOKEN,X-CSRF-TOKEN,X-Api-Key,X-Auth-Token')),
 
 ];

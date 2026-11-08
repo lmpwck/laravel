@@ -40,11 +40,11 @@ final class ContractAppServiceProvider extends ServiceProvider
             Cache::get('contract-key');
             Cache::put('contract-key', 'value', 60);
             Http::fake(['example.com/*' => Http::response('pong', 200)]);
-            Http::get('https://example.com/ping');
+            Http::get('https://example.com/ping?access_token=SECRET-outgoing');
             Mail::to('ada@example.com')->send(new ContractMail);
             Notification::route('mail', 'ada@example.com')->notify(new ContractNotification);
             ContractJob::dispatch($id);
-            Log::warning('contract log', ['id' => $id]);
+            Log::warning('contract log', ['id' => $id, 'password' => 'SECRET-log', 'user' => ['api_token' => 'SECRET-nested']]);
             report(new \RuntimeException('handled in the contract app'));
 
             return response()->json(['ok' => true]);

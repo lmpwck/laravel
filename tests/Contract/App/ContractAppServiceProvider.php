@@ -59,6 +59,9 @@ final class ContractAppServiceProvider extends ServiceProvider
             return response()->noContent();
         })->name('contract.reset');
 
+        // Signed-URL style parameters: `hash` and `nonce` are secrets in a route.
+        Route::get('/email/{id}/{hash}/{nonce}', fn () => response()->noContent())->name('contract.email');
+
         Route::get('/contract-fail', function () {
             throw new \LogicException('unhandled in the contract app');
         });

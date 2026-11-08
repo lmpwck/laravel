@@ -33,6 +33,9 @@ final class LampwickServiceProvider extends ServiceProvider
         $this->registeredTooLate = $this->app->getProviders(NightwatchServiceProvider::class) !== [];
 
         self::configureInstrumentation($this->app->make(Repository::class));
+
+        // Before any provider boots, so nothing is sent through the blocking socket.
+        $this->app->booting(fn () => self::useAgentStream($this->app->make(Repository::class)));
     }
 
     public function boot(): void
@@ -44,7 +47,6 @@ final class LampwickServiceProvider extends ServiceProvider
         }
 
         self::redactRecords();
-        self::useAgentStream($this->app->make(Repository::class));
 
         if ($this->registeredTooLate && $this->app->runningInConsole()) {
             $this->app->make('log')->warning('lampwick: LampwickServiceProvider was registered after the instrumentation provider, so LAMPWICK_* settings may not apply. Register Lampwick\Laravel\LampwickServiceProvider before Laravel\Nightwatch\NightwatchServiceProvider.');
@@ -105,22 +107,43 @@ final class LampwickServiceProvider extends ServiceProvider
     /**
      * Replaces the instrumentation's blocking socket with Transport\AgentStream, so a stuck agent
      * costs at most the connection timeout plus the timeout (1 s by default), never a hang.
+     *
+     * missingRedactionHooks() already switched monitoring off (before the instrumentation
+     * registered) when the ingest stream can't be replaced; if replacing it still fails, the
+     * instrumentation is switched off here instead of sending through the blocking socket.
      */
     public static function useAgentStream(Repository $config): void
     {
+        if (! filter_var($config->get('nightwatch.enabled', true), FILTER_VALIDATE_BOOL) || self::missingRedactionHooks() !== []) {
+            return;
+        }
         try {
             $core = app(\Laravel\Nightwatch\Core::class);
         } catch (\Throwable) {
             return;
         }
-        if (! $core->ingest instanceof \Laravel\Nightwatch\Ingest) {
-            return; // a test fake or a custom ingest
+        try {
+            if (! $core->enabled()) {
+                return;
+            }
+            if (! $core->ingest instanceof \Laravel\Nightwatch\Ingest) {
+                throw new \LogicException('the instrumentation uses an unknown ingest ('.get_class($core->ingest).')');
+            }
+            $timeout = (float) $config->get('nightwatch.ingest.connection_timeout', 0.5) + (float) $config->get('nightwatch.ingest.timeout', 0.5);
+            $core->ingest->streamFactory = Transport\AgentStream::factory(
+                max(0.05, $timeout),
+                (int) $config->get('lampwick.agent.max_frame_bytes', 8 * 1024 * 1024),
+            );
+        } catch (\Throwable $e) {
+            error_log('lampwick: could not replace the instrumentation\'s agent connection ('.$e->getMessage().'); monitoring is off. Update lampwick/laravel.');
+            $config->set('nightwatch.enabled', false);
+            try {
+                $core->config['enabled'] = false;
+                $core->dontSample();
+            } catch (\Throwable) {
+                //
+            }
         }
-        $timeout = (float) $config->get('nightwatch.ingest.connection_timeout', 0.5) + (float) $config->get('nightwatch.ingest.timeout', 0.5);
-        $core->ingest->streamFactory = Transport\AgentStream::factory(
-            max(0.05, $timeout),
-            (int) $config->get('lampwick.agent.max_frame_bytes', 8 * 1024 * 1024),
-        );
     }
 
     /**
@@ -133,13 +156,39 @@ final class LampwickServiceProvider extends ServiceProvider
             ['redactRequests', 'redactOutgoingRequests', 'redactCommands', 'redactExceptions'],
             static fn (string $hook) => ! method_exists(\Laravel\Nightwatch\Core::class, $hook),
         ));
-        foreach ([[\Laravel\Nightwatch\Core::class, 'ingest'], [\Laravel\Nightwatch\Ingest::class, 'streamFactory']] as [$class, $property]) {
-            if (! property_exists($class, $property) || ! (new \ReflectionProperty($class, $property))->isPublic()) {
-                $missing[] = (new \ReflectionClass($class))->getShortName().'::$'.$property;
-            }
+        if (! self::isPublicProperty(\Laravel\Nightwatch\Core::class, 'ingest', writable: false)) {
+            $missing[] = 'Core::$ingest';
+        }
+        if (! self::isPublicProperty(\Laravel\Nightwatch\Ingest::class, 'streamFactory', writable: true)) {
+            $missing[] = 'Ingest::$streamFactory';
         }
 
         return $missing;
+    }
+
+    /** Public, and for `$writable` also not readonly and able to hold a Closure. */
+    /** @internal */
+    public static function isPublicProperty(string $class, string $property, bool $writable): bool
+    {
+        if (! class_exists($class) || ! property_exists($class, $property)) {
+            return false;
+        }
+        $reflection = new \ReflectionProperty($class, $property);
+        if (! $reflection->isPublic() || $reflection->isStatic()) {
+            return false;
+        }
+        if (! $writable) {
+            return true;
+        }
+        if ($reflection->isReadOnly() || (PHP_VERSION_ID >= 80400 && ($reflection->isPrivateSet() || $reflection->isProtectedSet()))) {
+            return false;
+        }
+        $type = $reflection->getType();
+        $accepts = static fn (\ReflectionType $type): bool => $type instanceof \ReflectionNamedType
+            && in_array(strtolower($type->getName()), ['mixed', 'object', 'closure'], true);
+
+        return $type === null || $accepts($type)
+            || ($type instanceof \ReflectionUnionType && array_filter($type->getTypes(), $accepts) !== []);
     }
 
     /** `/reset/{token}` routes: the values of sensitive route parameters leave the URL. */

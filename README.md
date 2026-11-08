@@ -57,9 +57,11 @@ Before anything leaves your app, these values are replaced by `[redacted]`:
   `/bot<token>/`, Slack `/services/…`, Discord `/api/webhooks/<id>/<token>`) and any path
   segment that looks like a random token.
 - **Secrets inside text**: in log messages, exception messages and string values in log
-  context, every URL is redacted the same way, as are `Bearer <token>` and `Basic <credentials>`
-  values, JWTs (`eyJ….….…`) and the value of `name=value` or `name: value` pairs with a
-  sensitive name (`DB_PASSWORD=…`).
+  context, every URL is redacted the same way; so are the value after `Authorization:` or
+  `Proxy-Authorization:` (any scheme), credentials after `Bearer`, `Basic`, `Token`, `Bot`,
+  `Digest` or `ApiKey`, JWTs (`eyJ….….…`), and the value of a sensitive name in
+  `name=value`, `name: value`, `password:value`, JSON (`"password":"…"`) and PHP arrays
+  (`'password' => '…'`, `[password] => …`).
 - **Command lines**: the values of sensitive options (`--password=…`, `--token …`,
   `--password='a b'`, `-psecret`) and of `NAME=value` arguments with a sensitive name, and URLs
   in any argument. Other arguments are sent as given.
@@ -172,6 +174,8 @@ The variable names of the underlying instrumentation keep working; `LAMPWICK_*` 
 - It answers the app as soon as a payload is received, so the app is never slowed down by
   Lampwick or the network. If the agent is not running, stuck or not reading, the app waits at
   most about 1 second (the instrumentation's connection timeout plus its timeout) and keeps working; records from that period are lost.
+  After a failure the app stops trying for 10 seconds, so a long command or queue worker loses
+  at most one timeout per 10 seconds.
 - One HTTPS request is in flight at a time; records keep their order.
 - `503`, `429`, other `5xx` and network errors are retried, honouring `Retry-After`, otherwise
   with exponential backoff up to 60 seconds. A `413` splits the batch. Other `4xx` answers

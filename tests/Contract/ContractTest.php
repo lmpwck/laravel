@@ -64,6 +64,7 @@ final class ContractTest extends TestCase
         try {
             self::get("http://127.0.0.1:{$port}/contract/7?api_key=SECRET-query&page=2", ['Authorization: Bearer SECRET-bearer', 'X-Custom-Token: SECRET-header', 'Cookie: session=SECRET-cookie']);
             self::get("http://127.0.0.1:{$port}/reset/SECRET-route-token");
+            self::get("http://127.0.0.1:{$port}/email/42/SECRET-hash/SECRET-nonce");
             self::get("http://127.0.0.1:{$port}/contract-fail");
             self::get("http://127.0.0.1:{$port}/does-not-exist");
             foreach ([['contract:command'], ['contract:command', '--fail', '--password=SECRET-option'], ['queue:work', '--once', '--stop-when-empty'], ['schedule:run']] as $command) {
@@ -132,6 +133,7 @@ final class ContractTest extends TestCase
         $this->assertStringEndsWith('/ping?access_token=[redacted]', $this->one('outgoing-request', fn ($r) => $r['host'] === 'example.com')['url']);
         $this->assertSame('https://hooks.slack.com/services/[redacted]/[redacted]/[redacted]', $this->one('outgoing-request', fn ($r) => $r['host'] === 'hooks.slack.com')['url']);
         $this->assertStringEndsWith('/reset/[redacted]', $this->one('request', fn ($r) => $r['route_name'] === 'contract.reset')['url']);
+        $this->assertStringEndsWith('/email/42/[redacted]/[redacted]', $this->one('request', fn ($r) => $r['route_name'] === 'contract.email')['url']);
         $this->one('log', fn ($r) => $r['message'] === 'calling https://api.example.com/v1?api_key=[redacted]');
         $this->one('exception', fn ($r) => $r['message'] === 'callback to https://deploy:[redacted]@ci.example.com/hook failed');
         $log = json_decode($this->one('log', fn ($r) => $r['message'] === 'contract log')['context'], true);

@@ -31,7 +31,7 @@ final class DeployCommand extends Command
 
         $config = (array) config('lampwick', []);
         $token = (string) ($config['token'] ?? '');
-        $url = (string) ($config['url'] ?? 'https://lampwick.dev');
+        $url = (string) ($config['url'] ?? 'https://app.lampwick.dev');
 
         if ($token === '') {
             $this->components->error('LAMPWICK_TOKEN is not set.');

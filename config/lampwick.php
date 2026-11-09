@@ -17,7 +17,7 @@ return [
 
     'token' => env('LAMPWICK_TOKEN'),
 
-    'url' => env('LAMPWICK_URL', 'https://lampwick.dev'),
+    'url' => env('LAMPWICK_URL', 'https://app.lampwick.dev'),
 
     'enabled' => env('LAMPWICK_ENABLED', true),
 

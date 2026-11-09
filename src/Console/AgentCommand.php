@@ -13,7 +13,7 @@ final class AgentCommand extends Command
 {
     protected $signature = 'lampwick:agent
         {--listen= : Local address to accept records on (default: LAMPWICK_AGENT_LISTEN or 127.0.0.1:2407)}
-        {--url= : Lampwick address (default: LAMPWICK_URL or https://lampwick.dev)}';
+        {--url= : Lampwick address (default: LAMPWICK_URL or https://app.lampwick.dev)}';
 
     protected $description = 'Run the local agent that forwards monitoring data to Lampwick over HTTPS';
 

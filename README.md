@@ -4,7 +4,7 @@ Send requests, queries, jobs, exceptions, logs and more from your Laravel app to
 [Lampwick](https://lampwick.dev), over HTTPS.
 
 ```
-your app ──local TCP──▶ php artisan lampwick:agent ──HTTPS + project token──▶ https://lampwick.dev/ingest
+your app ──local TCP──▶ php artisan lampwick:agent ──HTTPS + project token──▶ https://app.lampwick.dev/ingest
 ```
 
 Your app hands its records to a small agent on the same server (a quick write to
@@ -157,7 +157,7 @@ the config file: `php artisan vendor:publish --tag=lampwick-config`.
 | Variable | Default | |
 | --- | --- | --- |
 | `LAMPWICK_TOKEN` | — | Project token. Without it nothing is captured. |
-| `LAMPWICK_URL` | `https://lampwick.dev` | Lampwick address. Must be `https://` (plain `http://` only to this machine: `localhost`, `127.0.0.1`, `::1`). |
+| `LAMPWICK_URL` | `https://app.lampwick.dev` | Lampwick address. Must be `https://` (plain `http://` only to this machine: `localhost`, `127.0.0.1`, `::1`). |
 | `LAMPWICK_ENABLED` | `true` | `false` turns the instrumentation off. |
 | `LAMPWICK_AGENT_LISTEN` | `127.0.0.1:2407` | Address the agent listens on and the app sends to. |
 | `LAMPWICK_AGENT_FLUSH_INTERVAL` | `1.0` | Seconds a record may wait before its batch is sent. |

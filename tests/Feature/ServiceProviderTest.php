@@ -2,7 +2,7 @@
 
 namespace Lampwick\Laravel\Tests\Feature;
 
-use Lampwick\Laravel\Agent\Agent;
+use Lampwick\Agent\Agent;
 use Lampwick\Laravel\LampwickServiceProvider;
 use Laravel\Nightwatch\Core;
 use Laravel\Nightwatch\NightwatchServiceProvider;
@@ -48,6 +48,11 @@ final class ServiceProviderTest extends TestCase
         $ingest = new \ReflectionObject($core->ingest);
         $this->assertSame('tcp://127.0.0.1:2499', $ingest->getProperty('transmitTo')->getValue($core->ingest));
         $this->assertSame(Agent::tokenHash('uk_provider_test'), $ingest->getProperty('tokenHash')->getValue($core->ingest));
+    }
+
+    public function test_the_instrumentation_has_every_redaction_hook(): void
+    {
+        $this->assertSame([], LampwickServiceProvider::missingRedactionHooks());
     }
 
     public function test_disables_the_instrumentation_without_a_token(): void

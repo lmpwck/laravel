@@ -3,7 +3,7 @@
 namespace Lampwick\Laravel\Tests\Feature;
 
 use Lampwick\Laravel\LampwickServiceProvider;
-use Lampwick\Laravel\Tests\FakeIngest;
+use Lampwick\Agent\Testing\FakeIngest;
 use Laravel\Nightwatch\Core;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\NightwatchServiceProvider;

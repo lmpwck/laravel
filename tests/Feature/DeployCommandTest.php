@@ -4,7 +4,7 @@ namespace Lampwick\Laravel\Tests\Feature;
 
 use Lampwick\Laravel\Console\DeployCommand;
 use Lampwick\Laravel\LampwickServiceProvider;
-use Lampwick\Laravel\Tests\FakeIngest;
+use Lampwick\Agent\Testing\FakeIngest;
 use Laravel\Nightwatch\NightwatchServiceProvider;
 use Orchestra\Testbench\TestCase;
 

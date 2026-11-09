@@ -1,4 +1,12 @@
-# Used by `vendor/bin/testbench` (the agent subprocess in tests).
+# Used by `vendor/bin/testbench` (the agent subprocess in tests) and the contract app
+# (tests/Contract), whose provider does nothing unless CONTRACT_APP=1.
+#
+# In an app, package discovery registers lampwick/laravel before laravel/nightwatch (name
+# order), which this package relies on. Testbench would discover only nightwatch (this package
+# is the root, not installed), so discovery is off and the order is spelled out here.
+dont-discover:
+  - laravel/nightwatch
 providers:
   - Lampwick\Laravel\LampwickServiceProvider
   - Laravel\Nightwatch\NightwatchServiceProvider
+  - Lampwick\Laravel\Tests\Contract\App\ContractAppServiceProvider

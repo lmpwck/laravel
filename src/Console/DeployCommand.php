@@ -3,6 +3,7 @@
 namespace Lampwick\Laravel\Console;
 
 use Illuminate\Console\Command;
+use Lampwick\Agent\Settings;
 use Lampwick\Laravel\LampwickServiceProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Process\Process;
@@ -37,7 +38,7 @@ final class DeployCommand extends Command
 
             return self::FAILURE;
         }
-        if (($problem = AgentCommand::urlProblem($url)) !== null) {
+        if (($problem = Settings::urlProblem($url)) !== null) {
             $this->components->error($problem);
 
             return self::FAILURE;

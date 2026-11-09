@@ -8,12 +8,12 @@ use Lampwick\Agent\Settings;
 use Lampwick\Laravel\LampwickServiceProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 
-#[AsCommand(name: 'lampwick:test', description: 'Check the lampwick configuration and send a test log record')]
+#[AsCommand(name: 'lampwick:test', description: 'Check the Lampwick configuration and send a test log record')]
 final class TestCommand extends Command
 {
     protected $signature = 'lampwick:test';
 
-    protected $description = 'Check the lampwick configuration and send a test log record';
+    protected $description = 'Check the Lampwick configuration and send a test log record';
 
     public function handle(): int
     {

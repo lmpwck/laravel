@@ -9,8 +9,8 @@ return [
     | Connection
     |--------------------------------------------------------------------------
     |
-    | The project token from the project's settings page in lampwick, and the
-    | lampwick address. Records are sent to "{url}/ingest" over HTTPS with the
+    | The project token from the project's settings page in Lampwick, and the
+    | Lampwick address. Records are sent to "{url}/ingest" over HTTPS with the
     | full token; they never leave the server unencrypted.
     |
     */
@@ -28,7 +28,7 @@ return [
     |
     | Your app hands its records to `php artisan lampwick:agent` on this local
     | address (a quick local TCP write, so requests never wait on the
-    | network). The agent batches them and forwards them to lampwick.
+    | network). The agent batches them and forwards them to Lampwick.
     | Keep it on a loopback or private address.
     |
     */

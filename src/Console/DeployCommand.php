@@ -63,7 +63,7 @@ final class DeployCommand extends Command
         [$status, $body, $error] = $this->post(rtrim($url, '/').'/api/v1/deploys', $token, $deploy, $config['agent']['ca_bundle'] ?? null);
 
         if ($status === 201) {
-            $this->components->info("Recorded deploy {$deploy['version']} in lampwick.");
+            $this->components->info("Recorded deploy {$deploy['version']} in Lampwick.");
 
             return self::SUCCESS;
         }

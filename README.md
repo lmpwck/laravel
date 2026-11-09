@@ -1,7 +1,7 @@
-# lampwick for Laravel
+# Lampwick for Laravel
 
 Send requests, queries, jobs, exceptions, logs and more from your Laravel app to
-[lampwick](https://lampwick.dev), over HTTPS.
+[Lampwick](https://lampwick.dev), over HTTPS.
 
 ```
 your app ──local TCP──▶ php artisan lampwick:agent ──HTTPS + project token──▶ https://lampwick.dev/ingest
@@ -9,7 +9,7 @@ your app ──local TCP──▶ php artisan lampwick:agent ──HTTPS + proje
 
 Your app hands its records to a small agent on the same server (a quick write to
 `127.0.0.1:2407`, so requests never wait on the network). The agent batches them and sends them
-to lampwick over HTTPS, authenticated with your full project token. If lampwick is briefly
+to Lampwick over HTTPS, authenticated with your full project token. If Lampwick is briefly
 unreachable, the agent keeps the records in memory (bounded) and retries.
 
 The instrumentation itself comes from the MIT-licensed
@@ -28,8 +28,8 @@ echo "LAMPWICK_TOKEN=uk_..." >> .env
 php artisan lampwick:agent
 ```
 
-Use your project token from the project's **Settings** page in lampwick. Open your app; within a
-few seconds the request shows up in lampwick. In production, keep the agent running under a
+Use your project token from the project's **Settings** page in Lampwick. Open your app; within a
+few seconds the request shows up in Lampwick. In production, keep the agent running under a
 process manager (below).
 
 `php artisan lampwick:test` checks the token, the network and the agent. To also send your
@@ -75,13 +75,13 @@ package turns monitoring off instead of sending unredacted records.
 Never sent at all: environment variables and configuration values, request bodies (unless `LAMPWICK_CAPTURE_REQUEST_PAYLOAD=true`; then only for 500 responses, with the rules above),
 response bodies, query bindings (only the SQL with its placeholders), the values of function
 arguments in stack traces (only their types), mail bodies and recipient addresses (only their
-number), and the project token (it only goes from the agent to lampwick, over HTTPS).
+number), and the project token (it only goes from the agent to Lampwick, over HTTPS).
 
 What is sent as written: SQL text, cache keys, mail subjects, log and exception messages apart
 from the URLs in them, and the source lines of your own files around an exception
 (`LAMPWICK_CAPTURE_EXCEPTION_SOURCE_CODE=false` turns them off; files under `vendor/`, `var/`,
 `bootstrap/cache/`, `storage/` and `.env*` files are never read). Keep secrets out of those, as
-you would for any log. lampwick's ingest also drops `Authorization`, `Cookie` and other
+you would for any log. Lampwick's ingest also drops `Authorization`, `Cookie` and other
 credential headers itself, as a second line of defence.
 
 ## Run the agent in production
@@ -143,11 +143,11 @@ php artisan lampwick:deploy            # version: LAMPWICK_DEPLOY, or the curren
 php artisan lampwick:deploy v1.4.0 --author="$FORGE_DEPLOY_AUTHOR"
 ```
 
-lampwick puts a marker on its charts and ties new errors to the deploy ("first seen in v1.4.0",
+Lampwick puts a marker on its charts and ties new errors to the deploy ("first seen in v1.4.0",
 "new since last deploy"). It sends the current git commit, the `origin` remote (to link the
 commit) and the app environment along; override them with `--commit`, `--repo` and
 `--environment`. It uses the same `LAMPWICK_TOKEN` and needs no agent. On GitHub Actions you can
-use the lampwick deploy action instead (`oosterhoff/lampwick/integrations/github-action@deploy-action-v1`).
+use the Lampwick deploy action instead (`oosterhoff/lampwick/integrations/github-action@deploy-action-v1`).
 
 ## Configuration
 
@@ -157,15 +157,15 @@ the config file: `php artisan vendor:publish --tag=lampwick-config`.
 | Variable | Default | |
 | --- | --- | --- |
 | `LAMPWICK_TOKEN` | — | Project token. Without it nothing is captured. |
-| `LAMPWICK_URL` | `https://lampwick.dev` | lampwick address. Must be `https://` (plain `http://` only to this machine: `localhost`, `127.0.0.1`, `::1`). |
+| `LAMPWICK_URL` | `https://lampwick.dev` | Lampwick address. Must be `https://` (plain `http://` only to this machine: `localhost`, `127.0.0.1`, `::1`). |
 | `LAMPWICK_ENABLED` | `true` | `false` turns the instrumentation off. |
 | `LAMPWICK_AGENT_LISTEN` | `127.0.0.1:2407` | Address the agent listens on and the app sends to. |
 | `LAMPWICK_AGENT_FLUSH_INTERVAL` | `1.0` | Seconds a record may wait before its batch is sent. |
 | `LAMPWICK_AGENT_BATCH_BYTES` | `2097152` | Send a batch early once it reaches this size. |
-| `LAMPWICK_AGENT_BUFFER_BYTES` | `67108864` | Memory for records while lampwick is unreachable; the oldest are dropped beyond this. |
+| `LAMPWICK_AGENT_BUFFER_BYTES` | `67108864` | Memory for records while Lampwick is unreachable; the oldest are dropped beyond this. |
 | `LAMPWICK_AGENT_SHUTDOWN_TIMEOUT` | `10` | Seconds to flush on stop. |
 | `LAMPWICK_CA_BUNDLE` | system | PEM file with CA certificates, only needed behind a TLS-intercepting proxy. |
-| `LAMPWICK_SERVER` | hostname | Server name shown in lampwick. |
+| `LAMPWICK_SERVER` | hostname | Server name shown in Lampwick. |
 | `LAMPWICK_DEPLOY` | Forge/Vapor/Cloud commit | Deployment identifier. |
 | `LAMPWICK_REQUEST_SAMPLE_RATE` | `1.0` | Share of requests to capture (0.0–1.0). |
 | `LAMPWICK_COMMAND_SAMPLE_RATE` | `1.0` | Same, for artisan commands. |
@@ -195,7 +195,7 @@ The variable names of the underlying instrumentation keep working; `LAMPWICK_*` 
 - `503`, `429`, other `5xx` and network errors are retried, honouring `Retry-After`, otherwise
   with exponential backoff up to 60 seconds. A `413` splits the batch. Other `4xx` answers
   (for example `401` for a wrong token) drop the batch and are logged as errors.
-- When your team has used its monthly events, lampwick answers `429` until the next month or
+- When your team has used its monthly events, Lampwick answers `429` until the next month or
   an upgrade. The agent then keeps the newest records buffered (up to its buffer size, oldest
   dropped first) and tries again every minute; the app itself is not affected.
 - Payloads whose token does not match `LAMPWICK_TOKEN` are refused, so two apps on one server
@@ -223,13 +223,13 @@ composer install
 vendor/bin/phpunit
 ```
 
-In the lampwick monorepo, Composer takes the shared core (`lampwick/php-agent`, the agent,
+In the Lampwick monorepo, Composer takes the shared core (`lampwick/php-agent`, the agent,
 client and record contract) from `../php-agent`.
 
 The contract tests (`tests/Contract`) run a small Laravel app (`tests/Contract/App`: a route,
 a command, a queued job and a scheduled task) as real processes — `php -S`, `queue:work`,
 `schedule:run` — through a real `lampwick:agent` to a fake HTTP ingest, and check every record
-against the format lampwick reads. The supported `laravel/nightwatch` versions are pinned to the
+against the format Lampwick reads. The supported `laravel/nightwatch` versions are pinned to the
 range these tests pass on (`composer.json`); CI runs them on the lowest and highest version of
 that range, and once a week on the newest Nightwatch release, so a release that changes the
 record format shows up in CI before the range is widened.

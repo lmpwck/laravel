@@ -1,8 +1,9 @@
 <?php
 
-// Router for `php -S`: a fake lampwick HTTP ingest. Every request is appended as one JSON line
-// to $FAKE_INGEST_DIR/requests.jsonl. Responses come from $FAKE_INGEST_DIR/responses.json, a
-// list of [status, retryAfter|null] consumed in order; when it is empty the answer is 202.
+// Router for `php -S`: a fake lampwick HTTP ingest and deploy endpoint (`POST /api/v1/deploys`).
+// Every request is appended as one JSON line to $FAKE_INGEST_DIR/requests.jsonl. Responses come
+// from $FAKE_INGEST_DIR/responses.json, a list of [status, retryAfter|null] consumed in order;
+// when it is empty the answer is 202 (201 for deploys).
 
 $dir = getenv('FAKE_INGEST_DIR');
 $body = file_get_contents('php://input');
@@ -21,7 +22,11 @@ $responses = is_file("$dir/responses.json") ? json_decode(file_get_contents("$di
 [$status, $retryAfter] = array_shift($responses) ?? [202, null];
 file_put_contents("$dir/responses.json", json_encode($responses));
 
-if ($_SERVER['REQUEST_URI'] !== '/ingest' || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+$deploy = $_SERVER['REQUEST_URI'] === '/api/v1/deploys';
+if ($deploy && $status === 202) {
+    $status = 201;
+}
+if (! in_array($_SERVER['REQUEST_URI'], ['/ingest', '/api/v1/deploys'], true) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
     $status = 404;
 }
 if (($headers['Authorization'] ?? '') !== 'Bearer '.getenv('FAKE_INGEST_TOKEN')) {
@@ -34,4 +39,8 @@ if ($retryAfter !== null) {
     header("Retry-After: $retryAfter");
 }
 $records = json_decode($body, true);
+if ($deploy) {
+    echo $status === 201 ? json_encode(['deploy' => ['id' => 1] + $records]) : json_encode(['error' => ['code' => 'bad_request', 'message' => "status $status"]]);
+    exit;
+}
 echo $status === 202 ? json_encode(['accepted' => count($records)]) : json_encode(['error' => "status $status"]);

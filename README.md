@@ -95,6 +95,21 @@ the agent in the same container, or run it as a sidecar and point the app at it 
 `LAMPWICK_AGENT_LISTEN` (for example `0.0.0.0:2407` for the agent and `agent:2407` for the app).
 Never expose the agent's port to the internet: it accepts data from anyone who can reach it.
 
+## Record deploys
+
+Run `lampwick:deploy` as the last step of your deploy (Forge deploy script, Envoyer hook, CI):
+
+```bash
+php artisan lampwick:deploy            # version: LAMPWICK_DEPLOY, or the current git commit
+php artisan lampwick:deploy v1.4.0 --author="$FORGE_DEPLOY_AUTHOR"
+```
+
+lampwick puts a marker on its charts and ties new errors to the deploy ("first seen in v1.4.0",
+"new since last deploy"). It sends the current git commit, the `origin` remote (to link the
+commit) and the app environment along; override them with `--commit`, `--repo` and
+`--environment`. It uses the same `LAMPWICK_TOKEN` and needs no agent. On GitHub Actions you can
+use the lampwick deploy action instead (`oosterhoff/lampwick/integrations/github-action@deploy-action-v1`).
+
 ## Configuration
 
 Everything is set with environment variables. To change the defaults in code instead, publish

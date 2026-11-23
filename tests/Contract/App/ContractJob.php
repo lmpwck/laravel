@@ -6,6 +6,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Lampwick\Laravel\Lampwick;
 
 final class ContractJob implements ShouldQueue
 {
@@ -17,5 +18,6 @@ final class ContractJob implements ShouldQueue
     {
         DB::select('select 2 as job');
         Log::info('contract job ran', ['id' => $this->id]);
+        Lampwick::event('payment.paid', ['amount' => 49.5], user: 7);
     }
 }

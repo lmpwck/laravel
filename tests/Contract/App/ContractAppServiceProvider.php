@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Lampwick\Laravel\Lampwick;
 
 /**
  * The small Laravel app of the contract test (tests/Contract/ContractTest.php): a route, a
@@ -46,6 +47,7 @@ final class ContractAppServiceProvider extends ServiceProvider
             ContractJob::dispatch($id);
             Log::warning('contract log', ['id' => $id, 'password' => 'SECRET-log', 'user' => ['api_token' => 'SECRET-nested']]);
             report(new \RuntimeException('handled in the contract app'));
+            Lampwick::event('checkout.completed', ['plan' => 'pro', 'items' => 3, 'api_token' => 'SECRET-prop', 'from' => 'https://shop.test/?token=SECRET-propurl', 'nested' => ['x' => 1]]);
 
             return response()->json(['ok' => true]);
         })->name('contract.show');

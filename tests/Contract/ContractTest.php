@@ -153,7 +153,7 @@ final class ContractTest extends TestCase
 
         $children = array_filter(self::$records, fn ($r) => ($r['execution_id'] ?? null) === $show['trace_id']);
         $this->assertEqualsCanonicalizing(
-            ['query', 'cache-event', 'outgoing-request', 'mail', 'notification', 'queued-job', 'log', 'exception'],
+            ['query', 'cache-event', 'outgoing-request', 'mail', 'notification', 'queued-job', 'log', 'exception', 'event'],
             array_values(array_unique(array_column($children, 't'))),
         );
 
@@ -218,6 +218,21 @@ final class ContractTest extends TestCase
         $log = $this->one('log', fn ($r) => $r['message'] === 'contract log');
         $this->assertSame('warning', $log['level']);
         $this->assertSame('7', json_decode($log['context'], true)['id']);
+    }
+
+    public function test_event_records(): void
+    {
+        $request = $this->one('request', fn ($r) => $r['route_name'] === 'contract.show');
+        $checkout = $this->one('event', fn ($r) => $r['name'] === 'checkout.completed');
+        $this->assertSame(['plan' => 'pro', 'items' => 3, 'api_token' => '[redacted]', 'from' => 'https://shop.test/?token=[redacted]'], $checkout['props']);
+        $this->assertSame('42', $checkout['user'], 'the signed-in user');
+        $this->assertSame([$request['trace_id'], 'request', 'v-contract'], [$checkout['execution_id'], $checkout['execution_source'], $checkout['deploy']]);
+
+        $attempt = $this->one('job-attempt', fn ($r) => true);
+        $paid = $this->one('event', fn ($r) => $r['name'] === 'payment.paid');
+        $this->assertSame(['amount' => 49.5], $paid['props']);
+        $this->assertSame('7', $paid['user'], 'the user given');
+        $this->assertSame([$attempt['attempt_id'], 'job'], [$paid['execution_id'], $paid['execution_source']]);
     }
 
     /** @return array<string, mixed> the only record of type `$t` that matches */

@@ -134,6 +134,31 @@ agent must run in a separate container, put both on an internal network of their
 `internal: true`), set `LAMPWICK_AGENT_LISTEN` to the agent's address there in both, and keep
 the port unpublished.
 
+## Send custom events
+
+A custom event is something a user did that you name, like `checkout.completed` or
+`payment.paid`. Lampwick lists it under **Events**, uses it as a step in funnels, user paths and
+retention, and an [event alert](https://lampwick.dev/docs/alerts/#event-alerts) can notify your
+team when it comes in:
+
+```php
+use Lampwick\Laravel\Lampwick;
+
+Lampwick::event('checkout.completed', ['plan' => 'pro', 'amount' => 49]);
+Lampwick::event('payment.paid', ['amount' => $payment->amount], user: $payment->user_id);
+```
+
+The user is the signed-in user unless you pass `user:` (in a webhook or a queued job there
+often is none). The event goes to the agent with the other records, so it never waits on the
+network: while the request, job or command is sampled it is sent with its records and shows in
+its trace; when it is not, it is sent on its own right away, so sampling never drops an event.
+
+| | |
+|---|---|
+| Name | 1 to 100 letters, digits, spaces and `. _ - : /`. With another name nothing is sent, `event()` returns `false` and the log says so once. |
+| Properties | Up to 20 strings, numbers and booleans (enums and `Stringable`s become their value), named with letters, digits and `_ . -` up to 40 characters. Other values are left out; strings are cut to 200 bytes. Sensitive names (above) are sent as `[redacted]`, and so are secrets in URLs in string values. |
+| Off | With `LAMPWICK_ENABLED=false` or without a token nothing is sent and `event()` returns `false`. It never throws. |
+
 ## Record deploys
 
 Run `lampwick:deploy` as the last step of your deploy (Forge deploy script, Envoyer hook, CI):
